@@ -1,0 +1,3 @@
+<footer class="site-footer"><div class="wrap footer-top"><div><h2><?php bloginfo('name'); ?></h2><p>A space for useful ideas, thoughtful stories, and a little everyday inspiration.</p></div><nav class="footer-links" aria-label="Footer navigation"><a href="<?php echo esc_url(home_url('/')); ?>">Home</a><a href="<?php echo esc_url(home_url('/#journal')); ?>">The journal</a><a href="<?php echo esc_url(get_feed_link()); ?>">RSS feed</a></nav></div><div class="wrap footer-bottom"><span>&copy; <?php echo esc_html(wp_date('Y')); ?> <?php bloginfo('name'); ?></span><span>Made for good reading.</span></div></footer>
+<?php wp_footer(); ?>
+</body></html>

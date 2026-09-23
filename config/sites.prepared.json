@@ -1,0 +1,47 @@
+[
+  {
+    "id": "stovall-local",
+    "name": "Stovall Dental (local)",
+    "url": "https://localhost/stovall08/blog",
+    "group": "Test sites",
+    "authorId": 1,
+    "categoryIds": [
+      9
+    ],
+    "personalization": {
+      "practice_name": "Stovall Dental",
+      "doctor_name": "Dr. Orlando R. Stovall, III",
+      "doctor_2_name": "Dr. Jonelle Stovall",
+      "doctors_names": "Dr. Orlando R. Stovall, III and Dr. Jonelle Stovall",
+      "city": "Goldsboro",
+      "state": "NC",
+      "phone": "919-735-3431",
+      "address": "1504 Wayne Memorial Drive",
+      "postal_code": "27534",
+      "appointment_url": "https://localhost/stovall08/contact-us/"
+    }
+  },
+  {
+    "id": "delray-test",
+    "name": "Reisman Eye Institute (Delray test)",
+    "url": "https://vg-delraycataractandlasik.glacialsites.com",
+    "group": "Test sites",
+    "authorId": 1,
+    "categoryIds": [
+      7
+    ],
+    "personalization": {
+      "practice_name": "Reisman Eye Institute",
+      "doctor_name": "Jeffrey M. Reisman, M.D.",
+      "doctor_2_name": "Amanda Koffman, O.D.",
+      "doctors_names": "Jeffrey M. Reisman, M.D. and Amanda Koffman, O.D.",
+      "city": "Delray Beach",
+      "state": "FL",
+      "phone": "(561) 925-8080",
+      "fax": "(561) 925-8081",
+      "address": "16244 S Military Trail, Suite 690",
+      "postal_code": "33484-6533",
+      "appointment_url": "https://www.mypatientvisit.com/onlinescheduling/#/scheduler/schedule?practiceid=7292ba3d-2edf-4cee-9388-0e12d705220d"
+    }
+  }
+]

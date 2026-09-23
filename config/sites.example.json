@@ -1,0 +1,36 @@
+[
+  {
+    "id": "test-a",
+    "name": "Test eye-care practice A",
+    "url": "https://test-a.example.com",
+    "group": "A",
+    "authorId": 7,
+    "categoryIds": [
+      12
+    ],
+    "personalization": {
+      "practice_name": "Blue & Gold Eye Care",
+      "doctor_name": "Evelyn Hart, M.D.",
+      "city": "Portland",
+      "phone": "555-0100",
+      "appointment_url": "https://test-a.example.com/appointments/"
+    }
+  },
+  {
+    "id": "test-b",
+    "name": "Test eye-care practice B",
+    "url": "https://test-b.example.com",
+    "group": "B",
+    "authorId": 9,
+    "categoryIds": [
+      3
+    ],
+    "personalization": {
+      "practice_name": "Clearview Eye Center",
+      "doctor_name": "Oliver Hayes, O.D.",
+      "city": "Seattle",
+      "phone": "555-0200",
+      "appointment_url": "https://test-b.example.com/appointments/"
+    }
+  }
+]

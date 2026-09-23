@@ -1,0 +1,18 @@
+import { mkdtemp, cp, mkdir, writeFile, rm } from 'node:fs/promises';
+import path from 'node:path';
+import os from 'node:os';
+import { createHash } from 'node:crypto';
+import { pathToFileURL } from 'node:url';
+import { spawn } from 'node:child_process';
+const root=await mkdtemp(path.join(os.tmpdir(),'wp-publisher-preview-'));
+await cp('src',path.join(root,'src'),{recursive:true});await cp('public',path.join(root,'public'),{recursive:true});
+await writeFile(path.join(root,'package.json'),'{"type":"module"}');
+for(const dir of ['config','data/assets','data/articles'])await mkdir(path.join(root,dir),{recursive:true});
+await writeFile(path.join(root,'config/sites.json'),JSON.stringify(['a','b'].map(id=>({id,name:`Simulated practice ${id.toUpperCase()}`,url:`https://${id}.test.invalid`,group:'A',authorId:7,categoryIds:[12],personalization:{practice_name:`Practice ${id.toUpperCase()}`}}))));
+const bytes=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=','base64'),id=createHash('sha256').update(bytes).digest('hex');
+await writeFile(path.join(root,'data/assets',id),bytes);await writeFile(path.join(root,'data/assets',`${id}.json`),JSON.stringify({type:'image/png',extension:'png'}));
+await writeFile(path.join(root,'data/articles/latest.json'),JSON.stringify({id:'simulated-browser-test',title:'Welcome to {{practice_name}}',content:'<p>Personalized for {{practice_name}}.</p>{{image:photo}}',excerpt:'',featured:'photo',assets:{photo:{assetId:id,alt:'Test pixel'}}}));
+const child=spawn(process.execPath,['--import',pathToFileURL(path.resolve('test-support/mock-wordpress.mjs')).href,path.join(root,'src/server.js')],{env:{...process.env,PORT:'3211',WP_A_USERNAME:'test',WP_A_APP_PASSWORD:'test-only',WP_B_USERNAME:'test',WP_B_APP_PASSWORD:'test-only'},stdio:'inherit'});
+console.log('SIMULATED WORDPRESS ONLY — temporary workspace at '+root);
+process.on('SIGINT',()=>child.kill());process.on('SIGTERM',()=>child.kill());
+child.on('exit',async()=>{if(path.dirname(root)===os.tmpdir())await rm(root,{recursive:true,force:true});process.exit(0);});

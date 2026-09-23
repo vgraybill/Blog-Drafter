@@ -1,0 +1,61 @@
+import { initEditorial } from './editorial-ui.js';
+const $=id=>document.getElementById(id);
+let editorial=null;const previewed=new Set();
+let csrf='',sites=[],assets={},planId=null,ready=[],searchLinks=[],draftLinks=[],working=false,uploading=0,reviewed=false;
+const message=(text,error=false)=>{$('message').textContent=text;$('message').className=error?'error':'';};
+const selected=()=>[...document.querySelectorAll('#sites input:checked')].map(el=>el.value);
+const siteName=id=>sites.find(s=>s.id===id)?.name || id;
+async function api(route,data) {const response=await fetch(`/api/${route}`,data===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':csrf},body:JSON.stringify(data)});const result=await response.json();if(!response.ok)throw new Error(result.error);return result;}
+function el(tag,text,cls){const node=document.createElement(tag);if(text!==undefined)node.textContent=text;if(cls)node.className=cls;return node;}
+function link(text,url){const node=el('a',text);node.href=url;node.target='_blank';node.rel='noopener noreferrer';return node;}
+function invalidate(){editorial?.invalidate();previewed.clear();draftLinks=[];$('launch-drafts').hidden=true;$('launch-drafts').disabled=true;reviewed=false;planId=null;ready=[];$('confirm').checked=false;$('confirm').disabled=true;$('publish').disabled=true;$('preview-area').hidden=true;$('results').replaceChildren();}
+function article(){return {id:$('article-id').value.trim(),title:$('title').value,content:$('content').value,excerpt:$('excerpt').value,featured:$('featured').value,assets,...(editorial?{editorial:editorial.get()}: {})};}
+function keys(){const e=editorial?.get();const content=$('content').value+(e?.enabled?selected().map(id=>e.variants?.[id]?.content||'').join(''):'');return [...new Set([...content.matchAll(/{{\s*image:([a-z0-9-]+)\s*}}/g)].map(m=>m[1]))];}
+function syncAssets(){
+ const inline=keys(),featured=$('featured').value;
+ $('featured').replaceChildren(new Option('None',''),new Option('Separate featured image','featured'),...inline.filter(k=>k!=='featured').map(k=>new Option(`Use inline: ${k}`,k)));
+ $('featured').value=[...$('featured').options].some(o=>o.value===featured)?featured:'';
+ const required=[...new Set([...inline,...($('featured').value?[$('featured').value]:[])])];
+ $('assets').replaceChildren();
+ for(const key of required){
+  const box=el('div',undefined,'asset'),fileLabel=el('label',key),file=document.createElement('input');file.type='file';file.accept='image/jpeg,image/png,image/webp';file.disabled=working;
+  const status=el('p',assets[key]?.assetId?'Local image saved. Choose another file to replace it.':'Choose a local image.');
+  file.addEventListener('change',async()=>{if(!file.files[0])return;const chosen=file.files[0];invalidate();uploading++;$('preflight').disabled=true;try{if(chosen.size>10*1024*1024)throw new Error('Image exceeds 10 MB.');const base64=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result.split(',')[1]);reader.onerror=reject;reader.readAsDataURL(chosen);});const result=await api('assets',{base64});assets[key]={assetId:result.assetId,alt:assets[key]?.alt||''};status.textContent=`Saved: ${chosen.name}`;}catch(e){message(e.message,true);}finally{uploading--;$('preflight').disabled=working||uploading>0;}});
+  fileLabel.append(file,status);const altLabel=el('label','Alt text'),alt=document.createElement('input');alt.value=assets[key]?.alt||'';alt.disabled=working;alt.addEventListener('input',()=>{assets[key]={...assets[key],alt:alt.value};invalidate();});altLabel.append(alt);box.append(fileLabel,altLabel);$('assets').append(box);
+ }
+}
+function busy(value){working=value;for(const node of document.querySelectorAll('button,input,textarea,select'))node.disabled=value;if(!value){$('confirm').disabled=!planId||!ready.length||!reviewed;$('publish').disabled=!planId||!$('confirm').checked;$('launch-posts').disabled=!searchLinks.length;$('launch-drafts').disabled=!draftLinks.length;$('preflight').disabled=uploading>0;}}
+async function run(fn){if(working)return;busy(true);try{await fn();}catch(e){message(e.message,true);}finally{busy(false);}}
+function showResults(results,preflight=false){
+ $('results').replaceChildren();for(const r of results){const row=el('div',undefined,'result');const good=preflight?r.ready:['done','skipped'].includes(r.status);row.append(el('strong',siteName(r.siteId)),el('span',r.message,good?'ok':'error'));
+  if(preflight&&r.ready){const btn=el('button','Preview');btn.onclick=()=>run(async()=>{const preview=await api('preview',{planId,siteId:r.siteId});$('preview-title').textContent=`Preview · ${siteName(r.siteId)}`;const doc=`<!doctype html><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${location.origin}; style-src 'unsafe-inline';"><style>body{font:16px system-ui;line-height:1.7;padding:20px;color:#23332f}img{max-width:100%}</style><h1>${preview.title}</h1>${preview.content}`;$('preview').srcdoc=doc;previewed.add(r.siteId);reviewed=ready.every(s=>previewed.has(s.siteId));btn.textContent='Previewed — open again';$('preview-area').hidden=false;$('confirm').disabled=!reviewed;message(reviewed?'All ready affiliate previews opened. Review them, then confirm.':`${previewed.size} of ${ready.length} ready affiliate previews opened.`);});row.append(btn);}
+  if(r.editUrl)row.append(link('Edit in WordPress',r.editUrl));$('results').append(row);
+ }
+}
+function launch(urls){if(!urls.length)return message('Select at least one site.');for(const url of urls)window.open(url,'_blank','noopener,noreferrer');message(`Requested ${urls.length} tabs. If tabs were blocked, allow pop-ups or use the individual links.`);}
+function refreshLinks(){invalidate();searchLinks=[];$('launch-posts').disabled=true;$('search-results').replaceChildren();$('launch-links').replaceChildren(...sites.filter(s=>selected().includes(s.id)).map(s=>link(s.name,`${s.url}/wp-admin/edit.php`)));editorial?.refresh();}
+function setArticle(a){$('article-id').value=a.id||crypto.randomUUID();$('title').value=a.title||'';$('content').value=a.content||'';$('excerpt').value=a.excerpt||'';assets=a.assets||{};syncAssets();$('featured').value=a.featured||'';syncAssets();invalidate();editorial?.load(a.editorial);syncAssets();}
+$('content').addEventListener('input',()=>{invalidate();syncAssets();});
+for(const id of ['article-id','title','excerpt'])$(id).addEventListener('input',invalidate);
+$('featured').onchange=()=>{invalidate();syncAssets();};
+$('confirm').onchange=()=>{$('publish').disabled=!planId||!$('confirm').checked;};
+$('preflight').onclick=()=>run(async()=>{const savedApprovals=editorial?.get().approvals;invalidate();if(savedApprovals)editorial.restoreApprovals(savedApprovals);message('Checking selected sites…');const result=await api('preflight',{article:article(),siteIds:selected()});planId=result.planId;ready=result.results.filter(r=>r.ready);showResults(result.results,true);message(`${ready.length} of ${result.results.length} sites ready. Preview every ready affiliate before confirming.`);});
+$('publish').onclick=()=>run(async()=>{if(!$('confirm').checked)throw new Error('Review and confirm first.');message(`Creating drafts on ${ready.length} ready sites. Keep this app running…`);const result=await api('publish',{planId,confirm:true});invalidate();showResults(result.results);draftLinks=[...new Set(result.results.filter(r=>['done','skipped'].includes(r.status)&&r.editUrl).map(r=>r.editUrl))];$('launch-drafts').hidden=!draftLinks.length;const successful=result.results.filter(r=>r.status==='done').length,skipped=result.results.filter(r=>r.status==='skipped').length;message(`${successful} created · ${skipped} already created · ${result.results.length-successful-skipped} failed. Run: ${result.runId}`);});
+$('launch').onclick=()=>launch(sites.filter(s=>selected().includes(s.id)).map(s=>`${s.url}/wp-admin/edit.php`));
+$('launch-posts').onclick=()=>launch(searchLinks);
+$('launch-drafts').onclick=()=>launch(draftLinks);
+$('search').onclick=()=>run(async()=>{message('Searching selected sites…');searchLinks=[];$('search-results').replaceChildren();const {results}=await api('search',{siteIds:selected(),slug:$('slug').value.trim(),dateField:$('date-field').value,from:$('from').value,to:$('to').value});for(const result of results){$('search-results').append(el('h3',siteName(result.siteId)));if(result.error)$('search-results').append(el('p',result.error,'error'));if(result.truncated)$('search-results').append(el('p','Limited to 1,000 posts. Narrow the date range.'));if(!result.posts.length&&!result.error)$('search-results').append(el('p','No matching posts.'));const table=el('table'),head=el('tr');for(const text of ['Title / slug','Status','Published','Modified',''])head.append(el('th',text));table.append(head);for(const p of result.posts){const row=el('tr'),title=el('td',p.title);title.append(el('p',p.slug));row.append(title,el('td',p.status),el('td',p.date),el('td',p.modified));const action=el('td');action.append(link('Edit',p.editUrl));row.append(action);table.append(row);searchLinks.push(p.editUrl);}if(result.posts.length){const wrap=el('div',undefined,'table-wrap');wrap.append(table);$('search-results').append(wrap);}}message(`Found ${searchLinks.length} posts. ${results.filter(r=>r.error).length} sites reported errors.`);});
+const eyeCareExample={title:$('title').defaultValue,content:$('content').defaultValue,excerpt:$('excerpt').defaultValue};
+$('eye-care-example').onclick=()=>{if(!window.confirm('Load the eye-care example as a new article? Save or export your current work first.'))return;setArticle({id:crypto.randomUUID(),...eyeCareExample,assets:{},featured:''});message('Eye-care example loaded. Choose an exam-room image, review the copy, and run preflight.');};
+$('new-article').onclick=()=>{if(!window.confirm('Start a new article? Export your current work first if needed.'))return;setArticle({id:crypto.randomUUID()});message('New article started.');};
+$('export').onclick=()=>{const url=URL.createObjectURL(new Blob([JSON.stringify(article(),null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='article.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
+$('import').onchange=async()=>{try{const file=$('import').files[0];if(!file)return;if(file.size>1024*1024)throw new Error('Article JSON exceeds 1 MB.');const a=JSON.parse(await file.text());if(!a||typeof a.title!=='string'||typeof a.content!=='string'||(a.assets&&(typeof a.assets!=='object'||Array.isArray(a.assets))))throw new Error('Invalid article JSON.');setArticle(a);message('Article imported. Run preflight to validate its local images.');}catch(e){message(e.message,true);}};
+try{
+ const session=await api('session');csrf=session.csrf;sites=session.sites;$('setup').hidden=!!sites.length;
+ editorial=initEditorial({sites,selected,article,onChange:()=>{invalidate();syncAssets();},api,run,message});
+ for(const group of [...new Set(sites.map(s=>s.group))]){const label=el('label',` Group ${group}`),check=document.createElement('input');label.dataset.group=group;check.type='checkbox';check.onchange=()=>{for(const input of document.querySelectorAll('#sites input'))if(sites.find(s=>s.id===input.value).group===group)input.checked=check.checked;refreshLinks();};label.prepend(check);$('groups').append(label);}
+ for(const s of sites){const label=el('label',` ${s.name}`),input=document.createElement('input');input.type='checkbox';input.value=s.id;input.onchange=()=>{for(const label of $('groups').children){const check=label.querySelector('input');const group=label.dataset.group;const members=sites.filter(s=>s.group===group);check.checked=members.every(s=>selected().includes(s.id));check.indeterminate=!check.checked&&members.some(s=>selected().includes(s.id));}refreshLinks();};label.prepend(input);label.append(el('small',s.url));$('sites').append(label);}
+ if(session.article)setArticle(session.article);else{$('article-id').value=crypto.randomUUID();syncAssets();}
+ message(sites.length?'Select your sites and prepare an article.':'Ready for setup. Add your two test sites to config/sites.json.');
+}catch(e){message(e.message,true);}
+
