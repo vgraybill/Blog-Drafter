@@ -2,6 +2,12 @@
 
 This workflow keeps approved source material separate from proposed affiliate versions. It prepares WordPress drafts; publishing and ticket reassignment remain human actions.
 
+## Load the supplied GSD example
+
+**Load GSD example** in Prepare an article starts a new article after confirmation. It loads the user-supplied source, an HTML version, the GSD ticket rules, protected provider introductions and both exact quotations. The full Markdown reference is [GSD blog source](examples/GSD-BLOG.md).
+
+The HTML retains source wording and uses native quote blocks. Its two inline image descriptions become local image placeholders; provider portraits are omitted according to the example rules. Choose the actual featured and inline files. No remote images or original links are imported. Source-specific claims and attribution are not automatically personalized. Site selection is unchanged, and no drafts or approvals are created. The current eye-care sites are test connections, not approved dermatology affiliates.
+
 ## Start a ticket
 
 1. Select only the intended affiliate sites. Reference sites such as GSD and MFC are not publishing targets unless the ticket explicitly includes them.
